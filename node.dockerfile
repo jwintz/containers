@@ -16,11 +16,9 @@
 
 FROM base:latest
 
-RUN apk update
 RUN apk add nodejs
 RUN apk add npm
 RUN apk add yarn
-RUN rm -rf /var/cache/apk/*
 
 ENV NODE_ENV=development \
     NPM_CONFIG_UPDATE_NOTIFIER=false \
@@ -51,8 +49,6 @@ RUN echo '' >> /etc/zsh/zshrc && \
     echo 'alias pd="pnpm dev"' >> /etc/zsh/zshrc
 
 RUN echo '{}' > /workspace/package.json
-
-CMD ["/bin/zsh"]
 
 ## #############################################################################
 ## Code ends here

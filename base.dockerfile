@@ -16,30 +16,57 @@
 
 FROM alpine:latest
 
+## #############################################################################
+## Environment setup
+## #############################################################################
+
 ENV SHELL=/bin/zsh TERM=xterm-256color
 
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
+## #############################################################################
+## Setup repositories 
+## #############################################################################
+
+RUN rm -f /etc/apk/repositories && \
+    touch /etc/apk/repositories && \
+    echo "https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
+    echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
     echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
-    apk update
+    apk update && \
+    apk upgrade
+
+## #############################################################################
+## Install base packages 
+## #############################################################################
 
 RUN apk add starship
+RUN apk add cmatrix
 RUN apk add eza
-RUN apk add macchina
 RUN apk add zsh
+RUN apk add zsh-autosuggestions
 RUN apk add zsh-vcs
 RUN apk add ripgrep
 RUN apk add bat
+RUN apk add fastfetch
+RUN apk add onefetch
+RUN apk add gum
+RUN apk add glances
 
-RUN rm -rf /var/cache/apk/*
+## #############################################################################
+## Configure zsh as the default shell 
+## #############################################################################
 
 RUN sed -i 's|/bin/ash|/bin/zsh|g' /etc/passwd
 
+## #############################################################################
+## Configure shell utilities globally
+## #############################################################################
+
 RUN mkdir -p /etc/zsh
+RUN mkdir -p /etc/fastfetch
+RUN mkdir -p /etc/starship
 
 RUN echo 'eval "$(starship init zsh)"' >> /etc/zsh/zshrc && \
     echo 'export STARSHIP_CONFIG=/etc/starship/starship.toml' >> /etc/zsh/zshrc
-
-RUN mkdir -p /etc/starship
 
 # Create a starship configuration file
 RUN cat > /etc/starship/starship.toml << 'STARSHIP_EOF'
@@ -224,7 +251,6 @@ RUN echo '# Global zsh configuration' > /etc/profile.d/zsh.sh && \
 
 RUN cat >> /etc/zsh/zshrc << 'EOF'
 
-setopt AUTO_CD              # Change directory without typing 'cd'
 setopt GLOB_DOTS            # Include dotfiles in globbing
 setopt HIST_IGNORE_ALL_DUPS # Remove older duplicate entries from history
 setopt HIST_REDUCE_BLANKS   # Remove superfluous blanks from history items
@@ -235,45 +261,89 @@ HISTFILE=/root/.zsh_history
 HISTSIZE=10000
 SAVEHIST=10000
 
-if command -v eza >/dev/null 2>&1; then
-    alias ls='eza --color=always --group-directories-first'
-    alias ll='eza -la --color=always --group-directories-first'
-    alias la='eza -a --color=always --group-directories-first'
-    alias lt='eza -aT --color=always --group-directories-first'
-else
-    alias ls='ls --color=auto'
-    alias ll='ls -la --color=auto'
-    alias la='ls -a --color=auto'
-    alias lt='ls -la --color=auto'
-fi
-alias cat='bat --style=auto'
+alias ls='eza --color=always --group-directories-first'
+alias ll='eza -la --color=always --group-directories-first'
+alias la='eza -a --color=always --group-directories-first'
+alias lt='eza -aT --color=always --group-directories-first'
 alias grep='rg'
-
-alias ..='cd ..'
-alias ...='cd ../..'
-alias ....='cd ../../..'
-alias ~='cd ~'
-alias h='history'
-alias c='clear'
-alias info='macchina'
+alias info='fastfetch'
+alias lnfo='onefetch'
+alias more='bat --style=auto'
 
 autoload -Uz compinit
 compinit
 
-zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
+source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 EOF
 
+RUN cat >> /etc/fastfetch/config.jsonc << 'FF_EOF'
+{
+    "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+    "logo": {
+        "source": "alpine3_small", // search for logos: fastfetch --list-logos or --print-logos
+        "padding": {
+                "top": 1
+        },
+    },
+    "display": {
+        "separator": "  "
+    },
+    "modules": [
+        "break",
+        "title",
+        {
+            "type": "os",
+            "key": "os    ",
+            "keyColor": "33",  // = color3
+        },
+        {
+            "type": "kernel",
+            "key": "kernel",
+            "keyColor": "33",
+        },
+        {
+            "type": "host",
+            "format": "{5} {1}",
+            "key": "host  ",
+            "keyColor": "33",
+        },
+        {
+            "type": "packages",
+            "key": "pkgs  ",
+            "keyColor": "33",
+        },
+        {
+            "type": "disk",
+            "key": "disk  ",
+            "keyColor": "33"
+        },{
+            "type": "memory",
+            "key": "memory",
+            "keyColor": "33",
+        },
+        "break",
+    ]
+}
+FF_EOF
+
 RUN echo 'export SHELL=/bin/zsh' >> /etc/environment
-RUN rm -rf /var/cache/apk/*
+
+## #############################################################################
+## Cleanup 
+## #############################################################################
+
+# RUN rm -rf /var/cache/apk/*
+
+## #############################################################################
+## Setup workspace 
+## #############################################################################
 
 WORKDIR /root
 
-SHELL ["/bin/zsh", "-c"]
+## #############################################################################
 
-# RUN echo 'macchina' >> /etc/zsh/zshrc
-
-CMD ["/bin/zsh"]
+CMD ["sh", "-c", "fastfetch && /bin/zsh"]
 
 ## #############################################################################
 ## Code ends here
