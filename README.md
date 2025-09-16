@@ -1,4 +1,8 @@
 ```sh
+defaults write com.apple.container.defaults build.rosetta -bool false
+```
+
+```sh
 container builder delete
 container builder start
 ```
